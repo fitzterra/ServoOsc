@@ -1,6 +1,17 @@
 Servo Oscillator Library
 ========================
 
+**Table of Contents**
+1. [Base functionality](#base-functionality)
+2. [Features](#features)
+3. [Terminology](#terminology)
+4. [Example](#example)
+5. [Interfaces and Usage](#interfaces-and-usage)
+	1. [Instance instantiation](#instance-instantiation)
+	2. [Setting parameters](#setting-parameters)
+	3. [Getting current settings](#getting-current-settings)
+	4. [Control](#control)
+
 This library is based on the original Servo Oscillator code by Juan
 Gonzalez-Gomez (Obijuan), which is part of his [ArduSnake] project ([on Github]).
 
@@ -97,8 +108,107 @@ void main() {
 }
 ```
 
+Interfaces and Usage
+--------------------
+
+### Instance instantiation
+`ServoOsc(p, a, o, ph, trim, pn)`
+
+where:  
+  * **p**: period in milliseconds. Default: 2000
+  * **a**: amplitude in degrees. Default: 45
+  * **o**: offset in degrees. Default: 0
+  * **ph**: start phase in degrees. Default: 0
+  * **trim**: trim correction in degrees: Default: 0
+  * **pn**: pin to attach servo to. Default: 0 (detached)
+
+Examples:
+```c++
+#include <ServoOsc.h>
+
+// Instantiate a global instance using the default 
+ServoOsc osc1;
+
+// Instantiate a global instance, setting parameters
+ServoOsc osc2(1000, 90);
+
+// Create a pointer to an instance to be instantiated later
+ServoOsc *osc3;
+
+void setup() {
+    // Instantiate osc3 - this sets all parameters and also automatically
+    // attaches to pin 3.
+    osc3 = new ServoOsc(1500, 45, 10, 0, 0, 3);
+
+    // Attach osc1 and osc2
+    osc1.attach(4);
+    osc2.attach(5);
+}
+```
+
+A note about attaching the servo before `setup()` runs: **Don't do this!**  
+When passing in the pin when instantiating a class instance, the underlying
+`Servo.attach()` will automatically be called. When attaching a servo before the
+`setup()` function is called, it is more than likely that the servo will not
+work as expected - see this link for more details:
+https://stackoverflow.com/a/27784648
+
+For this reason the `osc1` and `ocs2` instances must be attached in `setup()`,
+although all their other parameters may have been set at the point of
+instantiation.
+The `osc3` pointer is declared outisde of `setup()`, but the complete
+instantiation, including setting the pin, which causes automatic servo
+attachment, happens inside `setup()`. This servo would immediatly oscillate at
+the given parameters as soon as it is instatiated in `setup()`.
+
+### Setting parameters
+* **setPeriod(period)**: Set the period. Takes immediate effect on running servo.
+* **setOffset(offset)**: Set the offset. Takes immediate effect on running servo.
+* **setAmplitude(ampl)**: Set the amplitude. Takes immediate effect on running servo.
+* **setPhase(phase)**: Set the phase. Takes immediate effect on running servo.
+* **setTrim(trim)**: Set the trim. Takes immediate effect on running servo.
+* **setReverse(true/false)**: Reverse/mirror the oscillation angle or
+    unreverse/unmirror. Takes immediate effect on running servo.
+
+### Getting current settings
+* **uint16_t getPeriod()**: Returns the current period.
+* **uint8_t getAmplitude()**: Returns the current amplitude.
+* **int8_t getOffset()**: Returns the current offset.
+* **float getPhase()**: Returns the starting phase in radians.
+* **int8_t getTrim()**: Returns the current trim angle.
+* **uint8_t getPin()**: Returns the pin attached to. Returns 0 for detached.
+* **bool getReverse()**: Returns true if reverse is active, false otherwise.
+* **float getPhaseInc()**: Returns the calculated phase increment that gets
+    added to `phase` on every position update. This is is radians.
+* **float getCurrPhase()**: Returns the current phase in radians.
+* **bool attached()**: Returns true if currently attached, false otherwise.
+* **bool isStopped()**: Returns true if currently stopped, false otherwise.
+
+### Control
+* **update()**: Must be called regularly to update the oscillation position.
+* **stop()**: Stops the servo moving, but continues to update the angle (if
+    update() is still called) to keep the phase.
+* **start()**: Restarts a stopped servo. Note that it quickly seek to the
+    correct phase position on restart and then continue normal oscillation from
+    there.
+* **attach(pin)**: Attached to the servo on the given pin if not already
+    attached. Returns `false` if the pin is invalid or already attached, `true`
+    otherwise.
+* **detach()**: Detaches an attached servo. Return `false` if not attached,
+    `true` otherwise.
+* **positionServo(angle, withTrim=true)**: Positions the servo at any angle,
+    optionally taking the current trim angle into account. This will move an
+    attached servo even if the servo is currently in the stopped state. Although
+    it does not make much sense using it on a running servo, it can be done.
+* **resetToStart()**: Resets the servo to it's start position at offset, taking
+    trim, and phase into account. If attached, it will move the servo even if it
+    is in the stopped state, and will also reset the current position if it has
+    been running. If not attached, parameters will still be set.
+
+
 [ArduSnake]:  http://www.iearobotics.com/wiki/index.php?title=ArduSnake:amplituderduino_Modular_Snake_Robots_Library
 [on Github]: https://github.com/Obijuan/ArduSnake
 [a90o0]: animations/servo-A90O0.gif
 [a60o20]: animations/servo-A60O20.gif
+
 
