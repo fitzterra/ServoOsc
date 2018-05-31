@@ -53,18 +53,19 @@ private:
     uint16_t period;    // Total time for one oscillation: milliseconds
     uint8_t amplitude;  // Oscillation amplitude in degrees around offset: 0 - 90
     int8_t offset;      // Offset from 0° for center of oscillation: -90 - 90
-    float phase;       // Initial phase in the cycle to start.
+    float phase;        // Initial phase in the cycle to start.
     // NOTE: This is in radians and setPhase and the constructor will convert
     //       from degrees to radians when setting this value.
     //       The phase supplied in degrees should ideally be between
     //       (offset-amplitude/2) and (offset+amplitude/2)
     int8_t trim;        // Calibration offset: -x° - +x° from offset
-    uint8_t pin;        // Pin servo is connected to - 0 if not connected
+    int8_t pin;         // Pin servo is connected to, -1 if not set
     
     float currPhase;    // The current phase angle (radians)
     float phaseInc;     // By how much to increment phase on every position update
     bool stopped;       // Will be true if the oscillation is stopped
     bool reversed;      // True if the cycle direction should be reversed
+    bool attached=false;// True is attached, false otherwise
 
     // ### Methods
     // Test if it is time for a new update
@@ -75,7 +76,7 @@ private:
 public:
     // Constructor
     ServoOsc(uint16_t p=2000, uint8_t a=45, int8_t o=0, int8_t ph=0,
-             int8_t trim=0, uint8_t pn=0);
+             int8_t trim=0, int8_t pn=-1, bool atch=false);
     // This method should be called as often as possible, definately more
     // regularly than UPDATE_PERIOD, in order to update the servo position.
     void update();
@@ -85,9 +86,9 @@ public:
     void start() {stopped=false;};
 
     // Attach to the servo if not already attached
-    bool attach(uint8_t p=0);
-    // Detach if attached
-    bool detach();
+    bool attach(int8_t p=-1);
+    // Detach if attached and optionally reset pin to not set
+    bool detach(bool resetPin=false);
     // Sets the servo position to a given angle, optionally taking the
     // current trim into account. The angle should be between -90 and 90.
     // Returns false if not attached, true otherwise
@@ -105,6 +106,11 @@ public:
     void setAmplitude(uint8_t a) {amplitude=a;};
     void setPhase(int8_t p) {phase=DEG2RAD(p);};
     void setTrim(int8_t t) {trim=t;};
+    // Sets the pin to attach to if not currently attached. If the attach arg
+    // is true (the default), it will also immediatly attach the servo.
+    // Returns true if the pin was set, false if invalid pin or already
+    // attached.
+    bool setPin(int8_t p, bool attach=true);
     void setReverse(bool r) {reversed=r;};
     // Getters
     uint16_t getPeriod() {return period;};
@@ -112,14 +118,14 @@ public:
     int8_t getOffset() {return offset;};
     float getPhase() {return phase;};
     int8_t getTrim() {return trim;};
-    uint8_t getPin() {return pin;};
+    int8_t getPin() {return pin;};
     bool getReverse() {return reversed;};
     // These are more for diagnostics and debugging
     float getPhaseInc() {return phaseInc;};
     float getCurrPhase() {return currPhase;};
 
     // Info
-    bool attached() {return pin!=0;};
+    bool isAttached() {return attached;};
     bool isStopped() {return stopped;};
 
 #ifdef __SO_DBG

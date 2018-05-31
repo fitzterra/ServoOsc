@@ -43,7 +43,7 @@ Features
 
 Some of the main features:
 
-* Run as many servos as available digital pins (only D0 is not available)
+* Run as many servos as available digital pins.
 * Servos can be attached and detached at run time.
 * Servos can be stopped and started - when stopped, it continues to keep the
   cycle position in the background (as long as the update() method is called).
@@ -112,7 +112,7 @@ Interfaces and Usage
 --------------------
 
 ### Instance instantiation
-`ServoOsc(p, a, o, ph, trim, pn)`
+`ServoOsc(p, a, o, ph, trim, pn, atch)`
 
 where:  
   * **p**: period in milliseconds. Default: 2000
@@ -120,7 +120,8 @@ where:
   * **o**: offset in degrees. Default: 0
   * **ph**: start phase in degrees. Default: 0
   * **trim**: trim correction in degrees: Default: 0
-  * **pn**: pin to attach servo to. Default: 0 (detached)
+  * **pn**: pin to attach servo to. Default: -1 (detached)
+  * **atch**: auto attach to **pn** if valid pin. Default: false
 
 Examples:
 ```c++
@@ -129,20 +130,20 @@ Examples:
 // Instantiate a global instance using the default 
 ServoOsc osc1;
 
-// Instantiate a global instance, setting parameters
-ServoOsc osc2(1000, 90);
+// Instantiate a global instance, setting parameters, but NOT attaching
+ServoOsc osc2(1000, 90, 0, 0, 0, 5, false);
 
 // Create a pointer to an instance to be instantiated later
 ServoOsc *osc3;
 
 void setup() {
     // Instantiate osc3 - this sets all parameters and also automatically
-    // attaches to pin 3.
-    osc3 = new ServoOsc(1500, 45, 10, 0, 0, 3);
+    // attaches to pin 3 - .
+    osc3 = new ServoOsc(1500, 45, 10, 0, 0, 3, true);
 
     // Attach osc1 and osc2
     osc1.attach(4);
-    osc2.attach(5);
+    osc2.attach();  // Pin already set, just attach
 }
 ```
 
@@ -167,6 +168,9 @@ the given parameters as soon as it is instatiated in `setup()`.
 * **setAmplitude(ampl)**: Set the amplitude. Takes immediate effect on running servo.
 * **setPhase(phase)**: Set the phase. Takes immediate effect on running servo.
 * **setTrim(trim)**: Set the trim. Takes immediate effect on running servo.
+* **setPin(pin, [attach: true/false])**: Sets the servo pin and optionally also
+    attaches the servo. Default is to not attach. Returns false if setting the
+    pin or attaching failed, true otherwise.
 * **setReverse(true/false)**: Reverse/mirror the oscillation angle or
     unreverse/unmirror. Takes immediate effect on running servo.
 
@@ -181,7 +185,7 @@ the given parameters as soon as it is instatiated in `setup()`.
 * **float getPhaseInc()**: Returns the calculated phase increment that gets
     added to `phase` on every position update. This is is radians.
 * **float getCurrPhase()**: Returns the current phase in radians.
-* **bool attached()**: Returns true if currently attached, false otherwise.
+* **bool isAttached()**: Returns true if currently attached, false otherwise.
 * **bool isStopped()**: Returns true if currently stopped, false otherwise.
 
 ### Control
@@ -191,11 +195,11 @@ the given parameters as soon as it is instatiated in `setup()`.
 * **start()**: Restarts a stopped servo. Note that it quickly seek to the
     correct phase position on restart and then continue normal oscillation from
     there.
-* **attach(pin)**: Attached to the servo on the given pin if not already
-    attached. Returns `false` if the pin is invalid or already attached, `true`
-    otherwise.
-* **detach()**: Detaches an attached servo. Return `false` if not attached,
-    `true` otherwise.
+* **attach([pin])**: Attached to the servo, optionally providing the pin to use
+    if not already set, and if not already attached. Returns `false` if the pin
+    is invalid or already attached, `true` otherwise.
+* **detach([reset])**: Detaches an attached servo, optionally resetting/deleting
+    the associated pin. Return `false` if not attached, `true` otherwise.
 * **positionServo(angle, withTrim=true)**: Positions the servo at any angle,
     optionally taking the current trim angle into account. This will move an
     attached servo even if the servo is currently in the stopped state. Although

@@ -20,7 +20,8 @@
 #include "ServoOsc.h"
 
 // Constructor
-ServoOsc::ServoOsc(uint16_t p, uint8_t a, int8_t o, int8_t ph, int8_t tr, uint8_t pn):
+ServoOsc::ServoOsc(uint16_t p, uint8_t a, int8_t o, int8_t ph, int8_t tr,
+                   int8_t pn, bool atch):
     period(p),
     amplitude(a),
     offset(o),
@@ -33,8 +34,9 @@ ServoOsc::ServoOsc(uint16_t p, uint8_t a, int8_t o, int8_t ph, int8_t tr, uint8_
 
     // We need to calculate the phase increment wherever the period changes
     calcPhaseInc();
-    // Attach the servo if possible
-    attach();
+    // Attach the servo if needed
+    if (atch)
+        attach(pn);
 
 #ifdef __SO_DBG
     printConf();
@@ -71,37 +73,41 @@ void ServoOsc::calcPhaseInc() {
 // Attach to the servo if not already attached.
 //
 // Optionally supply the pin to attach to.
-// If not attached and p==0 (default if not supplied), it will attach to the
+// If not attached and p==-1 (default if not supplied), it will attach to the
 // previously set pin.
-// If p!=0, it will attach to that pin, and make it the new default pin.
+// If p!=-1, it will attach to that pin, and make it the new default pin.
 //
 // Returns true if new attachment, else false
-bool ServoOsc::attach(uint8_t p) {
+bool ServoOsc::attach(int8_t p) {
     // Return failure if we are already attached
-    if (pin!=0)
+    if (attached)
         return false;
     // Update the new pin?
-    pin = p!=0 ? p : pin;
+    pin = p!=-1 ? p : pin;
     // Return failure if we do not have a valid pin
-    if(pin==0)
+    if(pin==-1)
         return false;
 
     servo.attach(pin);
+    attached = true;
+
 #ifdef __SO_DBG
     Serial << "Servo is attached? " << servo.attached() << endl;
 #endif // __SO_DBG
     return true;
 }
 
-// Detach from the servo if attached.
+// Detach from the servo if attached, optionally resetting the pin
 // If not attached, returns false, else return true after detach.
-bool ServoOsc::detach() {
+bool ServoOsc::detach(bool resetPin) {
     // Return failure if we are currently detached
-    if (pin==0)
+    if (!attached)
         return false;
     // Detach and update the pin
-    servo.attach(pin);
-    pin = 0;
+    servo.detach();
+    attached = false;
+    if (resetPin)
+        pin = -1;
 
     return true;
 }
@@ -109,7 +115,7 @@ bool ServoOsc::detach() {
 // Set servo poistion if attached
 bool ServoOsc::positionServo(int8_t a, bool t) {
     // Indicate error if not attached
-    if (pin == 0) return false;
+    if (!attached) return false;
 
     // Adjust angle
     a += t ? trim : 0;
@@ -138,7 +144,7 @@ void ServoOsc::resetToStart() {
 // Servo position update
 void ServoOsc::update() {
     // Can't do anything if the servo is not attached
-    if(pin == 0)
+    if(!attached)
         return;
 
     // Return if we're not due for the next update
@@ -163,6 +169,23 @@ void ServoOsc::update() {
     // so that the coordination is always kept
     currPhase = currPhase + phaseInc;
 }
+
+// Sets the pin if not already attached, optionally also attaching the servo.
+// The attach arg is set default true in the header.
+bool ServoOsc::setPin(int8_t p, bool atch) {
+    // Return failure if we are already attached
+    if (attached)
+        return false;
+    // Update the new pin - should prolly do validation here...
+    pin = p;
+
+    // Attach it?
+    if (atch && pin!=-1)
+        return attach();
+
+    return true;
+}
+
 
 #ifdef __SO_DBG
 // Print config

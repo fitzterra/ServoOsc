@@ -88,8 +88,9 @@ void cHelp(SerialCommands *sender) {
     F("Available commands:\n") <<
     F("?\t- Show this help\n") <<
     F("??\t- Show status\n") <<
-    F("a pin\t- Attach servo to pin (2>= pin <= 13)\n") <<
-    F("d\t- Dettach servo\n") <<
+    F("n pn [a]- Set pin. Optionally also attach.\n") <<
+    F("a [pn]\t- Attach servo. Pin is optional if not set yet.\n") <<
+    F("d [r]\t- Dettach servo. Optionally reset pin.\n") <<
     F("A ampl\t- Set amplitude (0 - 180 degrees)\n") << 
     F("O offs\t- Set offset (-90 - +90 degrees)\n") << 
     F("P prd\t- Set period in milliseconds)\n") << 
@@ -110,32 +111,28 @@ SerialCommand cHelp_cb("?", cHelp);
 void cStatus(SerialCommands *sender) {
     Serial << "\n" <<
         F("Status:\n") <<
-        F("Attached: ");
-    if (osc->attached())
-        Serial << osc->getPin();
-    else
-        Serial << F("No");
-    Serial <<
-        F("\tStopped: ") << (osc->isStopped() ? F("Yes") : F("No")) << endl <<
-        F("Amplitude: ") << osc->getAmplitude() << F("\tOffset: ") << osc->getOffset() << endl <<
-        F("Period: ") << osc->getPeriod() << F("\tTrim: ") << osc->getTrim() << endl <<
-        F("Phase: ") << osc->getPhase() << endl <<
-        F("Phase inc: ") << osc->getPhaseInc() << F("\tCurr phase: ") << osc->getCurrPhase() << endl <<
+        F("Pin: ") << osc->getPin() <<
+        F("   \tAttached: ") << (osc->isAttached() ? F("Yes") : F("No")) <<
+        F("\nStopped: ") << (osc->isStopped() ? F("Yes") : F("No")) <<
+        F("\tAmplitude: ") << osc->getAmplitude() << F("\nOffset: ") << osc->getOffset() <<
+        F("\tPeriod: ") << osc->getPeriod() << F("\nTrim: ") << osc->getTrim() <<
+        F(" \tPhase: ") << osc->getPhase() <<
+        F("\nPhase inc: ") << osc->getPhaseInc() << F("\tCurr phase: ") << osc->getCurrPhase() << endl <<
         endl;
 }
 // Setup callback
 SerialCommand cStatus_cb("??", cStatus);
 
 /**
- * Serial Command Handler to attach the oscillator servo to a given pin.
+ * Serial Command Handler to set the oscillator servo pin and optionally attach.
  *
- * Command: "a pin"
+ * Command: "n pin [a]"
  *
- * where pin must be between 2 and 13 inclusive
+ * where pin is the pin number to set and if a is supplied also attach. 
  */
-void cAttachPin(SerialCommands* sender) {
+void cSetPin(SerialCommands* sender) {
     // Can only attach if detached now
-    if(osc->attached()) {
+    if(osc->isAttached()) {
 		*(sender->GetSerial()) << F("ERR: ") << F("already attached to pin ")
                                << osc->getPin() << endl;
         return;
@@ -148,17 +145,60 @@ void cAttachPin(SerialCommands* sender) {
 	}
     // Convert the pin string to an integer
 	int pin = atoi(argP);
-	if (pin<2 || pin >13) {
-		*(sender->GetSerial()) << F("ERR: ") << F("pin must be >=2 and <=13.\n");
-		return;
-	}
-    // Attach
-    osc->attach(pin);
-    *(sender->GetSerial()) << F("Servo attached to pin ") << osc->getPin() << endl;
 
+    // See if we have to attach
+    bool attach = false;
+	argP = sender->Next();
+	if (argP != NULL) {
+        if (argP[0] == 'a')
+            attach = true;
+        else {
+            *(sender->GetSerial()) << F("ERR: ") << F("Invalid command. Try ?.\n");
+            return;
+        }
+    }
+    // Set pin
+    bool res = osc->setPin(pin, attach);
+    if(!res)
+        *(sender->GetSerial()) << F("Error setting pin to ") << pin << endl;
+    else
+        *(sender->GetSerial()) << F("Servo pin set to ") << osc->getPin() << endl;
 }
 // Setup callback
-SerialCommand cAttachPin_cb("a", cAttachPin);
+SerialCommand cSetPin_cb("n", cSetPin);
+
+/**
+ * Serial Command Handler to attach the oscillator servo, optionally supplying
+ * a pin to attach to if a pin has not been set yet.
+ *
+ * Command: "a [pin]"
+ *
+ * where pin, if supplied, is the pin to attach to
+ */
+void cAttach(SerialCommands* sender) {
+    // Can only attach if detached now
+    if(osc->isAttached()) {
+		*(sender->GetSerial()) << F("ERR: ") << F("already attached to pin ")
+                               << osc->getPin() << endl;
+        return;
+    }
+    // Preset that we will not supply a pin
+    int pin = -1;
+    // Get a pointer to the pin argument string
+	char* argP = sender->Next();
+	if (argP != NULL) {
+        // Convert the pin string to an integer
+        pin = atoi(argP);
+	}
+    // Attach
+    bool res = osc->attach(pin);
+    if(!res)
+        *(sender->GetSerial()) << F("Error attaching to servo. Pin set?") << endl;
+    else
+        *(sender->GetSerial()) << F("Servo attached to pin ") << osc->getPin() << endl;
+}
+// Setup callback
+SerialCommand cAttach_cb("a", cAttach);
 
 /**
  * Serial Command Handler to detach the oscillator servo.
@@ -167,12 +207,23 @@ SerialCommand cAttachPin_cb("a", cAttachPin);
  */
 void cDetachPin(SerialCommands* sender) {
     // Can only detach if attached now
-    if(!osc->attached()) {
-		*(sender->GetSerial()) << F("ERR: ") << F("not attached");
+    if(!osc->isAttached()) {
+		*(sender->GetSerial()) << F("ERR: ") << F("not attached\n");
         return;
     }
+    // See if we have to reset the pin
+    bool rst = false;
+	char *argP = sender->Next();
+	if (argP != NULL) {
+        if (argP[0] == 'r')
+            rst = true;
+        else {
+            *(sender->GetSerial()) << F("ERR: ") << F("Invalid command. Try ?.\n");
+            return;
+        }
+    }
     // Detach
-    osc->detach();
+    osc->detach(rst);
     *(sender->GetSerial()) << F("Servo detached\n");
 }
 // Setup callback
@@ -337,7 +388,7 @@ SerialCommand cReverse_cb("m", cReverse);
 void cRun(SerialCommands* sender) {
     // Can only run if stopped now
     if(!osc->isStopped()) {
-		*(sender->GetSerial()) << F("ERR: ") << F("not running.");
+		*(sender->GetSerial()) << F("ERR: ") << F("not running.\n");
         return;
     }
     // Detach
@@ -356,7 +407,7 @@ SerialCommand cRun_cb("r", cRun);
 void cStop(SerialCommands* sender) {
     // Can only stopp if running now
     if(osc->isStopped()) {
-		*(sender->GetSerial()) << F("ERR: ") << F("already stopped.");
+		*(sender->GetSerial()) << F("ERR: ") << F("already stopped.\n");
         return;
     }
     // Detach
@@ -427,7 +478,6 @@ void cResetServo(SerialCommands* sender) {
 SerialCommand cResetServo_cb("R", cResetServo);
 
 
-
 void setup() {
     Serial.begin(115200);
     Serial << "ready... Enter ? for help\n";
@@ -438,7 +488,8 @@ void setup() {
     cmdParser.SetDefaultHandler(cInvalid);
     cmdParser.AddCommand(&cHelp_cb);
     cmdParser.AddCommand(&cStatus_cb);
-    cmdParser.AddCommand(&cAttachPin_cb);
+    cmdParser.AddCommand(&cSetPin_cb);
+    cmdParser.AddCommand(&cAttach_cb);
     cmdParser.AddCommand(&cDetachPin_cb);
     cmdParser.AddCommand(&cAmplitude_cb);
     cmdParser.AddCommand(&cOffset_cb);
@@ -455,7 +506,7 @@ void setup() {
 void loop() {
     cmdParser.ReadSerial();
 
-    if(osc->attached())
+    if(osc->isAttached())
         osc->update();
 }
 
