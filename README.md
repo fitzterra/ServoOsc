@@ -173,12 +173,21 @@ the given parameters as soon as it is instatiated in `setup()`.
     pin or attaching failed, true otherwise.
 * **setReverse(true/false)**: Reverse/mirror the oscillation angle or
     unreverse/unmirror. Takes immediate effect on running servo.
+* **setCycles(cycles)**: Can be used to run the oscillator for a specific number
+    of cycles (one cycle is 360°) or cycle parts.
 
 ### Getting current settings
 * **uint16_t getPeriod()**: Returns the current period.
 * **uint8_t getAmplitude()**: Returns the current amplitude.
 * **int8_t getOffset()**: Returns the current offset.
 * **float getPhase()**: Returns the starting phase in radians.
+* **float getPhaseStop()**: Returns the phase value of when the current cycle
+    will stop if the number of cycles to run was limited through a call to
+    `setCycles()`. One cycle is 360° which is 2π x amplitude Radians. When
+    calculating a run cycle, the number of radians for the cycle is
+    calculated and added to the `currPhase` phase counter. This phase counter is
+    updated regularly to the new phase from which the servo angle is calculated
+    for the next fraction of the complete cycle. 
 * **int8_t getTrim()**: Returns the current trim angle.
 * **uint8_t getPin()**: Returns the pin attached to. Returns 0 for detached.
 * **bool getReverse()**: Returns true if reverse is active, false otherwise.
