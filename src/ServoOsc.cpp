@@ -43,7 +43,7 @@ ServoOsc::ServoOsc(uint16_t p, uint8_t a, int8_t o, int8_t ph, int8_t tr,
 #endif // __SO_DBG
 }
 
-// Tests if it is time for the next position update
+// Tests if it is time for the next position update.
 bool ServoOsc::shouldUpdate() {
     // Local millis() value of the last update
     static uint32_t lastUpdate = 0;
@@ -89,6 +89,7 @@ bool ServoOsc::attach(int8_t p) {
         return false;
 
     servo.attach(pin);
+    currPhase = 0.0;
     attached = true;
 
 #ifdef __SO_DBG
@@ -108,6 +109,7 @@ bool ServoOsc::detach(bool resetPin) {
     attached = false;
     if (resetPin)
         pin = -1;
+    currPhase = 0.0;
 
     return true;
 }
@@ -165,9 +167,15 @@ void ServoOsc::update() {
      }
 
     // Increment the phase
-    // It is always increased, even when the oscillator is stop
+    // It is always increased, even when the oscillator is stopped
     // so that the coordination is always kept
     currPhase = currPhase + phaseInc;
+
+    // Check if we must stop if only running a set number of cycles
+    if (stopAt!=0 && currPhase > stopAt) {
+        stopped = true;
+        stopAt = 0;
+    }
 }
 
 // Sets the pin if not already attached, optionally also attaching the servo.

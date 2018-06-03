@@ -96,6 +96,7 @@ void cHelp(SerialCommands *sender) {
     F("P prd\t- Set period in milliseconds)\n") << 
     F("p phase\t- Set starting phase (-90 - +90 degrees)\n") << 
     F("t trim\t- Set trim angle (-90 - +90 degrees)\n") << 
+    F("c cycl\t- Set the number of cycles (can be fract i.e. 0.75) to run\n") << 
     F("m\t- Reverse/mirror the angle/direction\n") << 
     F("r\t- Run oscillation if stopped\n") <<
     F("s\t- Stop oscillation if playing/running\n") <<
@@ -118,6 +119,7 @@ void cStatus(SerialCommands *sender) {
         F("\tPeriod: ") << osc->getPeriod() << F("\nTrim: ") << osc->getTrim() <<
         F(" \tPhase: ") << osc->getPhase() <<
         F("\nPhase inc: ") << osc->getPhaseInc() << F("\tCurr phase: ") << osc->getCurrPhase() << endl <<
+        F("Phse stop: ") << osc->getPhaseStop() << endl <<
         endl;
 }
 // Setup callback
@@ -353,18 +355,45 @@ void cTrim(SerialCommands* sender) {
 		*(sender->GetSerial()) << F("ERR: ") << F("trim expected.\n");
 		return;
 	}
-    // Convert the phase string to an integer
+    // Convert the trim string to an integer
 	int trim = atoi(argP);
 	if (trim<-90 || trim>90) {
 		*(sender->GetSerial()) << F("ERR: ") << F("trim must be >=-90 and <=90.\n");
 		return;
 	}
-    // Attach
+    // Set the trim
     osc->setTrim(trim);
     *(sender->GetSerial()) << F("Trim correction set to ") << trim << endl;
 }
 // Setup callback
 SerialCommand cTrim_cb("t", cTrim);
+
+/**
+ * Serial Command Handler to set the number of cycles to run.
+ *
+ * Command: "t cycl"
+ *
+ * where cycl is a positive, optional fractional value
+ */
+void cCycles(SerialCommands* sender) {
+    // Get a pointer to the cycle argument string
+	char* argP = sender->Next();
+	if (argP == NULL) {
+		*(sender->GetSerial()) << F("ERR: ") << F("cycles expected.\n");
+		return;
+	}
+    // Convert the cycles string to a float
+	float cycle = atof(argP);
+	if (cycle<0.0) {
+		*(sender->GetSerial()) << F("ERR: ") << F("cycle must be >=0.0\n");
+		return;
+	}
+    // Set the cycles
+    osc->setCycles(cycle);
+    *(sender->GetSerial()) << F("Cycles set to ") << cycle << endl;
+}
+// Setup callback
+SerialCommand cCycles_cb("c", cCycles);
 
 /**
  * Serial Command Handler to reverse the servo angle
@@ -496,6 +525,7 @@ void setup() {
     cmdParser.AddCommand(&cPeriod_cb);
     cmdParser.AddCommand(&cPhase_cb);
     cmdParser.AddCommand(&cTrim_cb);
+    cmdParser.AddCommand(&cCycles_cb);
     cmdParser.AddCommand(&cReverse_cb);
     cmdParser.AddCommand(&cRun_cb);
     cmdParser.AddCommand(&cStop_cb);

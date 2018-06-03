@@ -67,6 +67,8 @@ private:
     bool reversed;      // True if the cycle direction should be reversed
     bool attached=false;// True is attached, false otherwise
 
+    float stopAt=0;     // If set, will stop oscillation when currPhase > this value
+
     // ### Methods
     // Test if it is time for a new update
     bool shouldUpdate();
@@ -112,11 +114,15 @@ public:
     // attached.
     bool setPin(int8_t p, bool attach=true);
     void setReverse(bool r) {reversed=r;};
+    // Sets a max number of cycles (can be fractional, i.e. 0.75 cycles) to run
+    // before stopping automatically.
+    void setCycles(float c) {stopAt = currPhase + 2*M_PI*c;};
     // Getters
     uint16_t getPeriod() {return period;};
     uint8_t getAmplitude() {return amplitude;};
     int8_t getOffset() {return offset;};
     float getPhase() {return phase;};
+    float getPhaseStop() {return stopAt;};
     int8_t getTrim() {return trim;};
     int8_t getPin() {return pin;};
     bool getReverse() {return reversed;};
