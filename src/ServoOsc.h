@@ -68,6 +68,7 @@ private:
     bool attached=false;// True is attached, false otherwise
 
     float stopAt=0;     // If set, will stop oscillation when currPhase > this value
+    uint32_t lastUpdate=0; // Last time the servo position was updated
 
     // ### Methods
     // Test if it is time for a new update

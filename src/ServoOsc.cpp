@@ -46,7 +46,6 @@ ServoOsc::ServoOsc(uint16_t p, uint8_t a, int8_t o, int8_t ph, int8_t tr,
 // Tests if it is time for the next position update.
 bool ServoOsc::shouldUpdate() {
     // Local millis() value of the last update
-    static uint32_t lastUpdate = 0;
     uint32_t now = millis();
 
     if((now - lastUpdate)> UPDATE_PERIOD) {
@@ -176,6 +175,7 @@ void ServoOsc::update() {
         stopped = true;
         stopAt = 0;
     }
+
 }
 
 // Sets the pin if not already attached, optionally also attaching the servo.
